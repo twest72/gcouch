@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Thomas Westphal
+ * Copyright (c) 2012, Thomas Westphal
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,16 +26,42 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package de.aonnet.json
+package de.aonnet.gcouch
 
-import java.lang.annotation.Documented
-import java.lang.annotation.Retention
-import java.lang.annotation.Target
-import static java.lang.annotation.ElementType.FIELD
-import static java.lang.annotation.RetentionPolicy.RUNTIME
+import de.aonnet.json.JsonConverter
 
-@Target(value = FIELD)
-@Retention(value = RUNTIME)
-@Documented
-@interface JsonExclude {
+@Singleton
+class CouchDbBeanSupport {
+
+    static GroovyCouchDb groovyCouchDb
+
+    def create(def bean) {
+
+        Map jsonBean = JsonConverter.toJsonMap(bean)
+        Map idAndVersion = groovyCouchDb.create(jsonBean)
+        bean.id = idAndVersion.id
+        bean.rev = idAndVersion.rev
+
+        return bean
+    }
+
+    def read(String id) {
+        Map jsonBean = groovyCouchDb.read(id)
+
+        assert jsonBean._id
+        assert jsonBean._id == id
+        assert jsonBean._rev
+
+        String rev = jsonBean._rev
+
+        jsonBean.remove '_id'
+        jsonBean.remove '_rev'
+
+        def bean = JsonConverter.newInstanceFromJsonMap(jsonBean)
+
+        bean.id = id
+        bean.rev = rev
+
+        return bean
+    }
 }

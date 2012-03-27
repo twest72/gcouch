@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Thomas Westphal
+ * Copyright (c) 2012, Thomas Westphal
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,8 +26,9 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package de.aonnet.json
+package de.aonnet.gcouch
 
+import de.aonnet.json.JsonExclude
 import groovy.transform.EqualsAndHashCode
 import groovy.transform.ToString
 

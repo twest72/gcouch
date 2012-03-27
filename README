@@ -1,9 +1,1 @@
-gson provided JSON methods on POGOs:
-
- String toJsonString() { ... }
-
- Map toJsonMap() { ... }
-
- static def newInstanceFromJsonString(String json) { ... }
-
- static def newInstanceFromJsonMap(Map map) { ... }
+gcouch provided methods for CouchDB on POGOs

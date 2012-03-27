@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Thomas Westphal
+ * Copyright (c) 2012, Thomas Westphal
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,7 +26,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package de.aonnet.json
+package de.aonnet.gcouch
 
 import java.lang.annotation.ElementType
 import java.lang.annotation.Retention
@@ -36,6 +36,6 @@ import org.codehaus.groovy.transform.GroovyASTTransformationClass
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target([ElementType.TYPE])
-@GroovyASTTransformationClass("de.aonnet.json.JsonSupportTransformation")
-public @interface JsonSupport {
+@GroovyASTTransformationClass('de.aonnet.gcouch.CouchDbSupportTransformation')
+public @interface CouchDbSupport {
 }
