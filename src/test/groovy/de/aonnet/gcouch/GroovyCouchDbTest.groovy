@@ -76,12 +76,11 @@ class GroovyCouchDbTest {
     }
 
     @Test
-    void testCreateView() {
+    void testPutViewsIntoCouchDb() {
         GroovyCouchDb couchDb = new GroovyCouchDb(host: HOST, dbName: TEST_DB)
         couchDb.cleanDb()
 
-
-        def viewId = '_design/testJoin'
+        def viewId = 'testJoin'
         def viewFunctionWithoutJoin = """
 // Testview
 function(doc) {
@@ -92,6 +91,68 @@ function(doc) {
                 testView2: [map: viewFunctionWithoutJoin]
         ]
         couchDb.putViewsIntoCouchDb viewId, views
+    }
+
+    @Test
+    void testPutLuceneFulltextSearchIntoCouchDb() {
+        GroovyCouchDb couchDb = new GroovyCouchDb(host: HOST, dbName: TEST_DB)
+        couchDb.cleanDb()
+
+        def veranstaltungByBeschreibung = """
+// Testview
+function(doc) {
+    if(doc.type == "veranstaltung") {
+        var ret = new Document();
+        ret.add( doc.titel , {"store": "yes"} );
+        ret.add( doc.ort.name , {"store": "yes"} );
+        ret.add( doc.beschreibung );
+        return ret;
+    }
+}
+"""
+        def fulltextSearchFunctions = [
+                veranstaltung_by_beschreibung: [index: veranstaltungByBeschreibung],
+                veranstaltung_by_beschreibung2: [index: veranstaltungByBeschreibung]
+        ]
+        couchDb.putLuceneFulltextSearchIntoCouchDb fulltextSearchFunctions
+    }
+
+    @Test
+    void testCreateAndCallLuceneFulltextSearch() {
+        GroovyCouchDb couchDb = new GroovyCouchDb(host: HOST, dbName: TEST_DB)
+        couchDb.cleanDb()
+        createData(couchDb)
+
+        def veranstaltungByBeschreibung = """
+// Testview
+function(doc) {
+    if(doc.type == "veranstaltung") {
+        var ret = new Document();
+        ret.add( doc.titel       , {"field":"titel"   , "store": "yes"} );
+        ret.add( doc.ort.name    , {"field":"ort_name", "store": "yes"} );
+        ret.add( doc.beschreibung );
+        return ret;
+    }
+}
+"""
+        def fulltextSearchFunctions = [
+                veranstaltung_by_beschreibung: [index: veranstaltungByBeschreibung]
+        ]
+        couchDb.putLuceneFulltextSearchIntoCouchDb fulltextSearchFunctions
+
+        Map luceneSearchResult = couchDb.luceneSearch('veranstaltung_by_beschreibung', [q:'Zum'])
+        //println luceneSearchResult
+
+        assert 25 == luceneSearchResult.limit
+        assert 6 == luceneSearchResult.total_rows
+        assert 0 == luceneSearchResult.skip
+        assert 'default:zum' == luceneSearchResult.q
+        luceneSearchResult.rows.each {
+            assert it.id
+            assert it.score
+            assert ["academixer Keller", "Universität Leipzig, Seminargebäude Raum 420"].contains(it.fields.ort_name)
+            assert ["In den Mühlen der Ebene: Unzeitgemäße Erinnerungen", "Ein bisschen unwirklich?"].contains(it.fields.titel)
+        }
     }
 
     @Test
@@ -434,7 +495,7 @@ function(doc) {
                 'allVeranstaltungJsonKey': [map: allVeranstaltungJsonKey],
                 'allVeranstaltungArrayKey': [map: allVeranstaltungArrayKey]
         ]
-        couchDb.putViewsIntoCouchDb "_design/all", views
+        couchDb.putViewsIntoCouchDb DESIGN_DOC_ALL, views
     }
 
     @Before

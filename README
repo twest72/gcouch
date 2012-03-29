@@ -1,1 +1,6 @@
 gcouch provided a simple couchdb driver and methods for CouchDB on POGOs
+
+project is depend on groovyson (https://github.com/twest72/groovyson)
+
+features:
+- support for couchdb-lucene (https://github.com/rnewson/couchdb-lucene)

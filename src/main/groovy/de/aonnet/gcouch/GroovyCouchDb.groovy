@@ -62,6 +62,12 @@ class GroovyCouchDb {
         deleteIntern("${dbName}/${id}", [rev: rev])
     }
 
+    Map luceneSearch(String searchName, Map<String, String> searchOptions) {
+
+        Map data = getIntern("_fti/local/${dbName}/_design/lucene/${searchName}", searchOptions)
+        return data
+    }
+
     Map view(String designDoc, String viewName) {
         Map data = getIntern("${dbName}/_design/${designDoc}/_view/${viewName}")
         return data
@@ -151,7 +157,17 @@ class GroovyCouchDb {
             log.debug ">> insert view '${viewName}' into couch: ${view}"
         }
 
-        putIntern("${dbName}/${viewId}", [_id: viewId, language: 'javascript', views: views])
+        String fullViewId = "_design/${viewId}"
+        putIntern("${dbName}/${fullViewId}", [_id: fullViewId, language: 'javascript', views: views])
+    }
+
+    void putLuceneFulltextSearchIntoCouchDb(Map<String, Map<String, String>> fulltextSearchFunctions) {
+
+        fulltextSearchFunctions.each { String functionName, Map<String, String> function ->
+            log.debug ">> insert fulltext search function '${functionName}' into couch: ${function}"
+        }
+
+        putIntern("${dbName}/_design/lucene", [_id: '_design/lucene', language: 'javascript', fulltext: fulltextSearchFunctions])
     }
 
     private Map viewWithJsonKeys(String designDoc, String viewName, Map<String, Map<String, Object>> keys) {
