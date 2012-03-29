@@ -140,7 +140,7 @@ function(doc) {
         ]
         couchDb.putLuceneFulltextSearchIntoCouchDb fulltextSearchFunctions
 
-        Map luceneSearchResult = couchDb.luceneSearch('veranstaltung_by_beschreibung', [q:'Zum'])
+        Map luceneSearchResult = couchDb.luceneSearch('veranstaltung_by_beschreibung', [q: 'Zum'])
         //println luceneSearchResult
 
         assert 25 == luceneSearchResult.limit

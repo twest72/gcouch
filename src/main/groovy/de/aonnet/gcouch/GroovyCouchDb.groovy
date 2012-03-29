@@ -32,6 +32,7 @@ import groovy.json.JsonBuilder
 import groovy.util.logging.Commons
 import groovyx.net.http.HttpResponseException
 import groovyx.net.http.RESTClient
+
 import static groovyx.net.http.ContentType.JSON
 
 @Commons
