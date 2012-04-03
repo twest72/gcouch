@@ -34,6 +34,7 @@ import groovyx.net.http.HttpResponseException
 import groovyx.net.http.RESTClient
 
 import static groovyx.net.http.ContentType.JSON
+import de.aonnet.lucene.LuceneHelper
 
 @Commons
 class GroovyCouchDb {
@@ -63,13 +64,27 @@ class GroovyCouchDb {
         deleteIntern("${dbName}/${id}", [rev: rev])
     }
 
+    Map luceneSearchByQuery(String searchName, Map<String, String> query) {
+
+        String queryString = LuceneHelper.createQueryWithAnd(query)
+        log.debug "call lucene search $searchName with query: $queryString"
+
+        Map data = luceneSearch searchName, [q: queryString]
+        return data
+    }
+
     Map luceneSearch(String searchName, Map<String, String> searchOptions) {
+
+        log.debug "call lucene search $searchName with options: $searchOptions"
 
         Map data = getIntern("_fti/local/${dbName}/_design/lucene/${searchName}", searchOptions)
         return data
     }
 
     Map view(String designDoc, String viewName) {
+
+        log.debug "call view $viewName"
+
         Map data = getIntern("${dbName}/_design/${designDoc}/_view/${viewName}")
         return data
     }
@@ -77,7 +92,7 @@ class GroovyCouchDb {
     Map viewWithJsonKey(String designDoc, String viewName, Map<String, Object> key) {
 
         String jsonKey = createJsonKey(key)
-        log.debug "call view with key: $jsonKey"
+        log.debug "call view $viewName with key: $jsonKey"
 
         Map data = viewWithJsonKeys(designDoc, viewName, [key: jsonKey])
         return data
@@ -86,7 +101,7 @@ class GroovyCouchDb {
     Map viewWithJsonStartKey(String designDoc, String viewName, Map<String, Object> startKey) {
 
         String jsonStartKey = createJsonKey(startKey)
-        log.debug "call view with json startkey: $jsonStartKey"
+        log.debug "call view $viewName with json startkey: $jsonStartKey"
 
         Map data = viewWithJsonKeys(designDoc, viewName, [startkey: jsonStartKey])
         return data
@@ -95,7 +110,7 @@ class GroovyCouchDb {
     Map viewWithJsonEndKey(String designDoc, String viewName, Map<String, Object> endKey) {
 
         String jsonEndKey = createJsonKey(endKey)
-        log.debug "call view with json endkey: $jsonEndKey"
+        log.debug "call view $viewName with json endkey: $jsonEndKey"
 
         Map data = viewWithJsonKeys(designDoc, viewName, [endkey: jsonEndKey])
         return data
@@ -105,7 +120,7 @@ class GroovyCouchDb {
 
         String jsonStartKey = createJsonKey(startKey)
         String jsonEndKey = createJsonKey(endKey)
-        log.debug "call view with json startkey and endkey: $jsonStartKey $jsonEndKey"
+        log.debug "call view $viewName with json startkey and endkey: $jsonStartKey $jsonEndKey"
 
         Map data = viewWithJsonKeys(designDoc, viewName, [startkey: jsonStartKey, endkey: jsonEndKey])
         return data

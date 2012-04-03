@@ -195,7 +195,7 @@ function(doc) {
 
 
     @Test
-    void testCreateAndCallLuceneFulltextSearchWithQParameterList() {
+    void testCreateAndCallLuceneFulltextSearchByQuery() {
         GroovyCouchDb couchDb = new GroovyCouchDb(host: HOST, dbName: TEST_DB)
         couchDb.cleanDb()
         createData(couchDb)
@@ -217,10 +217,9 @@ function(doc) {
         ]
         couchDb.putLuceneFulltextSearchIntoCouchDb fulltextSearchFunctions
 
-        String qQuery = LuceneHelper.createQueryWithAnd([
-                ort_name:['Nationalbibliothek', 'Universität Leipzig, Seminargebäude Raum 420'],
-                beschreibung:['durch die Deutsche Nationalbibliothek', 'Zum Postulat des "Magischen Realismus" bei Daniel Kehlmann.']])
-        Map luceneSearchResult = couchDb.luceneSearch('veranstaltung_by_beschreibung', [q: qQuery])
+        Map luceneSearchResult = couchDb.luceneSearchByQuery('veranstaltung_by_beschreibung', [
+                        ort_name:['Nationalbibliothek', 'Universität Leipzig, Seminargebäude Raum 420'],
+                        beschreibung:['durch die Deutsche Nationalbibliothek', 'Zum Postulat des "Magischen Realismus" bei Daniel Kehlmann.']])
 
         assert 25 == luceneSearchResult.limit
         assert 6 == luceneSearchResult.total_rows
