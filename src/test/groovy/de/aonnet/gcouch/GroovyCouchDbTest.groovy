@@ -30,6 +30,7 @@ package de.aonnet.gcouch
 
 import org.junit.Before
 import org.junit.Test
+import de.aonnet.lucene.LuceneHelper
 
 class GroovyCouchDbTest {
 
@@ -141,10 +142,9 @@ function(doc) {
         couchDb.putLuceneFulltextSearchIntoCouchDb fulltextSearchFunctions
 
         Map luceneSearchResult = couchDb.luceneSearch('veranstaltung_by_beschreibung', [q: 'Zum'])
-        //println luceneSearchResult
 
         assert 25 == luceneSearchResult.limit
-        assert 6 == luceneSearchResult.total_rows
+        assert 9 == luceneSearchResult.total_rows
         assert 0 == luceneSearchResult.skip
         assert 'default:zum' == luceneSearchResult.q
         luceneSearchResult.rows.each {
@@ -152,6 +152,87 @@ function(doc) {
             assert it.score
             assert ["academixer Keller", "Universität Leipzig, Seminargebäude Raum 420"].contains(it.fields.ort_name)
             assert ["In den Mühlen der Ebene: Unzeitgemäße Erinnerungen", "Ein bisschen unwirklich?"].contains(it.fields.titel)
+        }
+    }
+
+    @Test
+    void testCreateAndCallLuceneFulltextSearchWithQParameter() {
+        GroovyCouchDb couchDb = new GroovyCouchDb(host: HOST, dbName: TEST_DB)
+        couchDb.cleanDb()
+        createData(couchDb)
+
+        def veranstaltungByBeschreibung = """
+// Testview
+function(doc) {
+    if(doc.type == "veranstaltung") {
+        var ret = new Document();
+        ret.add( doc.titel       , {"field":"titel"   , "store": "yes"} );
+        ret.add( doc.ort.name    , {"field":"ort_name", "store": "yes"} );
+        ret.add( doc.beschreibung );
+        return ret;
+    }
+}
+"""
+        def fulltextSearchFunctions = [
+                veranstaltung_by_beschreibung: [index: veranstaltungByBeschreibung]
+        ]
+        couchDb.putLuceneFulltextSearchIntoCouchDb fulltextSearchFunctions
+
+        Map luceneSearchResult = couchDb.luceneSearch('veranstaltung_by_beschreibung', [q: 'titel:durch'])
+        println luceneSearchResult
+
+        assert 25 == luceneSearchResult.limit
+        assert 3 == luceneSearchResult.total_rows
+        assert 0 == luceneSearchResult.skip
+        assert 'titel:durch' == luceneSearchResult.q
+        luceneSearchResult.rows.each {
+            assert it.id
+            assert it.score
+            assert "Deutsche Nationalbibliothek" == it.fields.ort_name
+            assert "durch die Deutsche Nationalbibliothek" == it.fields.titel
+        }
+    }
+
+
+    @Test
+    void testCreateAndCallLuceneFulltextSearchWithQParameterList() {
+        GroovyCouchDb couchDb = new GroovyCouchDb(host: HOST, dbName: TEST_DB)
+        couchDb.cleanDb()
+        createData(couchDb)
+
+        def veranstaltungByBeschreibung = """
+// Testview
+function(doc) {
+    if(doc.type == "veranstaltung") {
+        var ret = new Document();
+        ret.add( doc.titel       , {"field":"titel"       , "store": "yes"} );
+        ret.add( doc.ort.name    , {"field":"ort_name"    , "store": "yes"} );
+        ret.add( doc.beschreibung, {"field":"beschreibung", "store": "yes"} );
+        return ret;
+    }
+}
+"""
+        def fulltextSearchFunctions = [
+                veranstaltung_by_beschreibung: [index: veranstaltungByBeschreibung]
+        ]
+        couchDb.putLuceneFulltextSearchIntoCouchDb fulltextSearchFunctions
+
+        String qQuery = LuceneHelper.createQueryWithAnd([
+                ort_name:['Nationalbibliothek', 'Universität Leipzig, Seminargebäude Raum 420'],
+                beschreibung:['durch die Deutsche Nationalbibliothek', 'Zum Postulat des "Magischen Realismus" bei Daniel Kehlmann.']])
+        Map luceneSearchResult = couchDb.luceneSearch('veranstaltung_by_beschreibung', [q: qQuery])
+
+        assert 25 == luceneSearchResult.limit
+        assert 6 == luceneSearchResult.total_rows
+        assert 0 == luceneSearchResult.skip
+        assert '+(ort_name:nationalbibliothek ort_name:"universität leipzig seminargebäude raum 420") +(beschreibung:"durch die deutsche nationalbibliothek" beschreibung:"zum postulat des" default:magischen default:realismus default:"bei daniel kehlmann")' == luceneSearchResult.q
+        luceneSearchResult.rows.each {
+            assert it.id
+            assert it.score
+            assert ['Universität Leipzig, Seminargebäude Raum 420'].contains(it.fields.ort_name)
+            assert ['Ein bisschen unwirklich?'].contains(it.fields.titel)
+            // today the query find both, with and without "
+            assert ['Zum Postulat des Magischen Realismus bei Daniel Kehlmann.', 'Zum Postulat des "Magischen Realismus" bei Daniel Kehlmann.'].contains(it.fields.beschreibung)
         }
     }
 
@@ -177,7 +258,7 @@ function(doc) {
         //println 'allVeranstaltung'
         viewResult = couchDb.view(DESIGN_DOC_ALL, 'allVeranstaltungJsonKey')
         //printView viewResult
-        assert 12 == viewResult.total_rows
+        assert 15 == viewResult.total_rows
         assert 0 == viewResult.offset
     }
 
@@ -193,8 +274,8 @@ function(doc) {
         //println 'viewWithJsonKey'
         Map viewResult = couchDb.viewWithJsonKey(DESIGN_DOC_ALL, 'allVeranstaltungJsonKey', [datum: '2012-03-15', uhrzeit_von: '10:00', titel: 'durch die Deutsche Nationalbibliothek'])
         //printView viewResult
-        assert 12 == viewResult.total_rows
-        assert 6 == viewResult.offset
+        assert 15 == viewResult.total_rows
+        assert 9 == viewResult.offset
         assert 3 == viewResult.rows.size()
         viewResult.rows.each {
             assert it.id
@@ -224,8 +305,8 @@ function(doc) {
         //println 'viewWithJsonStartKey'
         Map viewResult = couchDb.viewWithJsonStartKey(DESIGN_DOC_ALL, 'allVeranstaltungJsonKey', [datum: '2012-03-15', uhrzeit_von: '10:00'])
         //printView viewResult
-        assert 12 == viewResult.total_rows
-        assert 6 == viewResult.offset
+        assert 15 == viewResult.total_rows
+        assert 9 == viewResult.offset
         assert 6 == viewResult.rows.size()
         viewResult.rows.each {
             assert it.id
@@ -237,8 +318,8 @@ function(doc) {
         //println 'viewWithJsonStartKey2'
         viewResult = couchDb.viewWithJsonStartKey(DESIGN_DOC_ALL, 'allVeranstaltungJsonKey', [datum: '2012-03-15', uhrzeit_von: '10:00', titel: 'f'])
         //printView viewResult
-        assert 12 == viewResult.total_rows
-        assert 9 == viewResult.offset
+        assert 15 == viewResult.total_rows
+        assert 12 == viewResult.offset
         assert 3 == viewResult.rows.size()
         viewResult.rows.each {
             assert it.id
@@ -260,8 +341,8 @@ function(doc) {
         //println 'viewWithJsonStartAndEndKey'
         Map viewResult = couchDb.viewWithJsonStartAndEndKey(DESIGN_DOC_ALL, 'allVeranstaltungJsonKey', [datum: '2012-03-15', uhrzeit_von: '10:00', titel: 'durch'], [datum: '2012-03-15', uhrzeit_von: '10:00', titel: 'durch die Deutsche Nationalbibliothek'])
         //printView viewResult
-        assert 12 == viewResult.total_rows
-        assert 6 == viewResult.offset
+        assert 15 == viewResult.total_rows
+        assert 9 == viewResult.offset
         assert 3 == viewResult.rows.size()
         viewResult.rows.each {
             assert it.id
@@ -274,8 +355,8 @@ function(doc) {
         //println 'viewWithJsonStartAndEndKey2'
         viewResult = couchDb.viewWithJsonStartAndEndKey(DESIGN_DOC_ALL, 'allVeranstaltungJsonKey', [datum: '2012-03-15', uhrzeit_von: '09:30'], [datum: '2012-03-15', uhrzeit_von: '10:01'])
         //printView viewResult
-        assert 12 == viewResult.total_rows
-        assert 6 == viewResult.offset
+        assert 15 == viewResult.total_rows
+        assert 9 == viewResult.offset
         assert 3 == viewResult.rows.size()
         viewResult.rows.each {
             assert it.id
@@ -288,15 +369,15 @@ function(doc) {
         //println 'viewWithJsonStartAndEndKey3'
         viewResult = couchDb.viewWithJsonStartAndEndKey(DESIGN_DOC_ALL, 'allVeranstaltungJsonKey', [datum: '2012-03-15', uhrzeit_von: '10:00'], [datum: '2012-03-15', uhrzeit_von: '10:00'])
         //printView viewResult
-        assert 12 == viewResult.total_rows
-        assert 6 == viewResult.offset
+        assert 15 == viewResult.total_rows
+        assert 9 == viewResult.offset
         assert 0 == viewResult.rows.size()
 
         //println 'viewWithJsonStartAndEndKey4'
         viewResult = couchDb.viewWithJsonStartAndEndKey(DESIGN_DOC_ALL, 'allVeranstaltungJsonKey', [datum: '2012-03-15', uhrzeit_von: '10:00'], [datum: '2012-03-15', uhrzeit_von: '23:00'])
         //printView viewResult
-        assert 12 == viewResult.total_rows
-        assert 6 == viewResult.offset
+        assert 15 == viewResult.total_rows
+        assert 9 == viewResult.offset
         assert 6 == viewResult.rows.size()
         viewResult.rows.each {
             assert it.id
@@ -317,9 +398,9 @@ function(doc) {
         //println 'viewWithJsonEndKey'
         Map viewResult = couchDb.viewWithJsonEndKey(DESIGN_DOC_ALL, 'allVeranstaltungJsonKey', [datum: '2012-03-15', uhrzeit_von: '14:00'])
         //printView viewResult
-        assert 12 == viewResult.total_rows
+        assert 15 == viewResult.total_rows
         assert 0 == viewResult.offset
-        assert 9 == viewResult.rows.size()
+        assert 12 == viewResult.rows.size()
         viewResult.rows.each {
             assert it.id
 
@@ -446,7 +527,21 @@ function(doc) {
                 veranstaltungsart: 'Wissenschaftliche Konferenz',
                 mitwirkende: 'Leonhard Herrmann',
                 titel: 'Ein bisschen unwirklich?',
-                beschreibung: 'Zum Postulat des „Magischen Realismus“ bei Daniel Kehlmann.',
+                beschreibung: 'Zum Postulat des "Magischen Realismus" bei Daniel Kehlmann.',
+                veranstalter: 'Universität Leipzig, Institut für Germanistik, Fritz-Thyssen-Stiftung, Leipziger Buchmesse',
+                ort: [id: ort3._id, name: ort3.name],
+                eintritt: 'Offen für Interessierte',
+                reihe: ['Fachprogramm', 'Wissenschaftliche Konferenz']
+        ]
+        def veranstaltung33 = [
+                type: typeVeranstaltung,
+                datum: '2012-03-13',
+                uhrzeit_von: '16:30',
+                uhrzeit_bis: '16:50',
+                veranstaltungsart: 'Wissenschaftliche Konferenz',
+                mitwirkende: 'Leonhard Herrmann',
+                titel: 'Ein bisschen unwirklich?',
+                beschreibung: 'Zum Postulat des Magischen Realismus bei Daniel Kehlmann.',
                 veranstalter: 'Universität Leipzig, Institut für Germanistik, Fritz-Thyssen-Stiftung, Leipziger Buchmesse',
                 ort: [id: ort3._id, name: ort3.name],
                 eintritt: 'Offen für Interessierte',
@@ -458,6 +553,7 @@ function(doc) {
             create veranstaltung21
             create veranstaltung31
             create veranstaltung32
+            create veranstaltung33
         }
     }
 
