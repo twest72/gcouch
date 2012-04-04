@@ -30,7 +30,6 @@ package de.aonnet.gcouch
 
 import org.junit.Before
 import org.junit.Test
-import de.aonnet.lucene.LuceneHelper
 
 class GroovyCouchDbTest {
 
@@ -218,8 +217,8 @@ function(doc) {
         couchDb.putLuceneFulltextSearchIntoCouchDb fulltextSearchFunctions
 
         Map luceneSearchResult = couchDb.luceneSearchByQuery('veranstaltung_by_beschreibung', [
-                        ort_name:['Nationalbibliothek', 'Universität Leipzig, Seminargebäude Raum 420'],
-                        beschreibung:['durch die Deutsche Nationalbibliothek', 'Zum Postulat des "Magischen Realismus" bei Daniel Kehlmann.']])
+                ort_name: ['Nationalbibliothek', 'Universität Leipzig, Seminargebäude Raum 420'],
+                beschreibung: ['durch die Deutsche Nationalbibliothek', 'Zum Postulat des "Magischen Realismus" bei Daniel Kehlmann.']])
 
         assert 25 == luceneSearchResult.limit
         assert 6 == luceneSearchResult.total_rows
@@ -233,6 +232,58 @@ function(doc) {
             // today the query find both, with and without "
             assert ['Zum Postulat des Magischen Realismus bei Daniel Kehlmann.', 'Zum Postulat des "Magischen Realismus" bei Daniel Kehlmann.'].contains(it.fields.beschreibung)
         }
+    }
+
+
+    @Test
+    void testCreateAndCallLuceneFulltextSearchByQueryWithSkip() {
+        GroovyCouchDb couchDb = new GroovyCouchDb(host: HOST, dbName: TEST_DB)
+        couchDb.cleanDb()
+        createData(couchDb)
+
+        def veranstaltungByBeschreibung = """
+// Testview
+function(doc) {
+    if(doc.type == "veranstaltung") {
+        var ret = new Document();
+        ret.add( doc.titel       , {"field":"titel"       , "store": "yes"} );
+        ret.add( doc.ort.name    , {"field":"ort_name"    , "store": "yes"} );
+        ret.add( doc.beschreibung, {"field":"beschreibung", "store": "yes"} );
+        return ret;
+    }
+}
+"""
+        def fulltextSearchFunctions = [
+                veranstaltung_by_beschreibung: [index: veranstaltungByBeschreibung]
+        ]
+        couchDb.putLuceneFulltextSearchIntoCouchDb fulltextSearchFunctions
+
+        Map luceneSearchResult = couchDb.luceneSearchByQuery('veranstaltung_by_beschreibung', [
+                ort_name: ['Nationalbibliothek', 'Universität Leipzig, Seminargebäude Raum 420'],
+                beschreibung: ['durch die Deutsche Nationalbibliothek', 'Zum Postulat des "Magischen Realismus" bei Daniel Kehlmann.']], [skip: 0, limit: 2])
+
+        assert 2 == luceneSearchResult.limit
+        assert 6 == luceneSearchResult.total_rows
+        assert 2 == luceneSearchResult.rows.size()
+        assert 0 == luceneSearchResult.skip
+
+        luceneSearchResult = couchDb.luceneSearchByQuery('veranstaltung_by_beschreibung', [
+                ort_name: ['Nationalbibliothek', 'Universität Leipzig, Seminargebäude Raum 420'],
+                beschreibung: ['durch die Deutsche Nationalbibliothek', 'Zum Postulat des "Magischen Realismus" bei Daniel Kehlmann.']], [skip: 2, limit: 2])
+
+        assert 2 == luceneSearchResult.limit
+        assert 6 == luceneSearchResult.total_rows
+        assert 2 == luceneSearchResult.rows.size()
+        assert 2 == luceneSearchResult.skip
+
+        luceneSearchResult = couchDb.luceneSearchByQuery('veranstaltung_by_beschreibung', [
+                ort_name: ['Nationalbibliothek', 'Universität Leipzig, Seminargebäude Raum 420'],
+                beschreibung: ['durch die Deutsche Nationalbibliothek', 'Zum Postulat des "Magischen Realismus" bei Daniel Kehlmann.']], [skip: 4, limit: 2])
+
+        assert 2 == luceneSearchResult.limit
+        assert 6 == luceneSearchResult.total_rows
+        assert 2 == luceneSearchResult.rows.size()
+        assert 4 == luceneSearchResult.skip
     }
 
     @Test

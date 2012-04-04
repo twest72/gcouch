@@ -28,13 +28,13 @@
 
 package de.aonnet.gcouch
 
+import de.aonnet.lucene.LuceneHelper
 import groovy.json.JsonBuilder
 import groovy.util.logging.Commons
 import groovyx.net.http.HttpResponseException
 import groovyx.net.http.RESTClient
 
 import static groovyx.net.http.ContentType.JSON
-import de.aonnet.lucene.LuceneHelper
 
 @Commons
 class GroovyCouchDb {
@@ -66,10 +66,19 @@ class GroovyCouchDb {
 
     Map luceneSearchByQuery(String searchName, Map<String, String> query) {
 
+        Map data = luceneSearchByQuery searchName, query, [:]
+        return data
+    }
+
+    Map luceneSearchByQuery(String searchName, Map<String, String> query, Map<String, String> searchOptions) {
+
         String queryString = LuceneHelper.createQueryWithAnd(query)
         log.debug "call lucene search $searchName with query: $queryString"
 
-        Map data = luceneSearch searchName, [q: queryString]
+        searchOptions << [q: queryString]
+        log.debug "call lucene search $searchName with searchOptions: $searchOptions"
+
+        Map data = luceneSearch searchName, searchOptions
         return data
     }
 

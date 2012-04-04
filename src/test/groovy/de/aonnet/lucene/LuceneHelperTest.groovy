@@ -35,27 +35,27 @@ class LuceneHelperTest {
     @Test
     void testCreateQueryWithAndSimple() {
         assert '(beschreibung:"durch die Deutsche Nationalbibliothek")' ==
-                LuceneHelper.createQueryWithAnd([beschreibung:'durch die Deutsche Nationalbibliothek'])
+                LuceneHelper.createQueryWithAnd([beschreibung: 'durch die Deutsche Nationalbibliothek'])
     }
 
     @Test
     void testCreateQueryWithAndWithTwoElements() {
         assert '(beschreibung:"durch die Deutsche Nationalbibliothek") AND (titel:"Mühlen der Ebene")' ==
-                LuceneHelper.createQueryWithAnd([beschreibung:'durch die Deutsche Nationalbibliothek', titel:'Mühlen der Ebene'])
+                LuceneHelper.createQueryWithAnd([beschreibung: 'durch die Deutsche Nationalbibliothek', titel: 'Mühlen der Ebene'])
     }
 
     @Test
     void testCreateQueryWithAndWithOneList() {
         assert '(ort_name:"Nationalbibliothek" OR ort_name:"academixer")' ==
-                LuceneHelper.createQueryWithAnd([ort_name:['Nationalbibliothek', 'academixer']])
+                LuceneHelper.createQueryWithAnd([ort_name: ['Nationalbibliothek', 'academixer']])
     }
 
     @Test
     void testCreateQueryWithAndWithTwoLists() {
         assert '(ort_name:"Nationalbibliothek" OR ort_name:"Universität Leipzig, Seminargebäude Raum 420") AND (beschreibung:"durch die Deutsche Nationalbibliothek" OR beschreibung:"Zum Postulat des "Magischen Realismus" bei Daniel Kehlmann.")' ==
                 LuceneHelper.createQueryWithAnd([
-                        ort_name:['Nationalbibliothek', 'Universität Leipzig, Seminargebäude Raum 420'],
-                        beschreibung:['durch die Deutsche Nationalbibliothek', 'Zum Postulat des "Magischen Realismus" bei Daniel Kehlmann.']]
+                        ort_name: ['Nationalbibliothek', 'Universität Leipzig, Seminargebäude Raum 420'],
+                        beschreibung: ['durch die Deutsche Nationalbibliothek', 'Zum Postulat des "Magischen Realismus" bei Daniel Kehlmann.']]
                 )
     }
 }
