@@ -33,6 +33,7 @@ import groovy.json.JsonBuilder
 import groovy.util.logging.Commons
 import groovyx.net.http.HttpResponseException
 import groovyx.net.http.RESTClient
+import org.apache.http.conn.HttpHostConnectException
 
 import static groovyx.net.http.ContentType.JSON
 
@@ -46,22 +47,50 @@ class GroovyCouchDb {
     private RESTClient couchDbClient
 
     Map<String, String> create(def object) {
+
+        checkStorageObject(object)
+
         def data = postIntern("${dbName}", object)
         return [id: data.id, rev: data.rev]
     }
 
     def read(String id) {
+
+        if (id == null || id.trim().isEmpty()) {
+            String message = "cannot read with id $id"
+            throw new DataRetrievalFailureException(message, new IllegalArgumentException(message))
+        }
+
         def data = getIntern("${dbName}/${id}")
         return data
     }
 
-    Map<String, String> update(String uuid, def object) {
-        def data = putIntern("${dbName}/${uuid}", object)
+    Map<String, String> update(String version, def object) {
+
+        if (version == null || version.trim().isEmpty()) {
+            String message = "cannot update with version $version"
+            throw new DataStorageFailureException(message, new IllegalArgumentException(message))
+        }
+
+        checkStorageObject(object)
+
+        def data = putIntern("${dbName}/${version}", object)
         return [id: data.id, rev: data.rev]
     }
 
-    void delete(String id, String rev) {
-        deleteIntern("${dbName}/${id}", [rev: rev])
+    void delete(String id, String version) {
+
+        if (id == null || id.trim().isEmpty()) {
+            String message = "cannot delete with id $id"
+            throw new DataRetrievalFailureException(message, new IllegalArgumentException(message))
+        }
+
+        if (version == null || version.trim().isEmpty()) {
+            String message = "cannot delete with version $version"
+            throw new DataRetrievalFailureException(message, new IllegalArgumentException(message))
+        }
+
+        deleteIntern("${dbName}/${id}", [rev: version])
     }
 
     Map luceneSearchByQuery(String searchName, Map<String, String> query) {
@@ -94,7 +123,15 @@ class GroovyCouchDb {
 
         log.debug "call view $viewName"
 
-        Map data = getIntern("${dbName}/_design/${designDoc}/_view/${viewName}")
+        Map data = view(designDoc, viewName, [:])
+        return data
+    }
+
+    Map view(String designDoc, String viewName, Map<String, String> viewOptions) {
+
+        log.debug "call view $viewName with options: $viewOptions"
+
+        Map data = viewWithJsonKeys(designDoc, viewName, viewOptions)
         return data
     }
 
@@ -163,16 +200,9 @@ class GroovyCouchDb {
 
             assert data.db_name == dbName
             return true
-        } catch (HttpResponseException e) {
+        } catch (DbNotFoundException e) {
 
-            // check exception: db not exists error
-            if (e.response.data.error == 'not_found' && e.response.data.reason == 'no_db_file') {
-                return false
-            }
-
-            // other exception
-            log.error "path: $path response: ${e.response.data}", e
-            throw e
+            return false
         }
     }
 
@@ -193,6 +223,13 @@ class GroovyCouchDb {
         }
 
         putIntern("${dbName}/_design/lucene", [_id: '_design/lucene', language: 'javascript', fulltext: fulltextSearchFunctions])
+    }
+
+    private void checkStorageObject(object) {
+        if (object == null || (object instanceof String && object.trim().isEmpty()) || (object instanceof Map && object.size() == 0)) {
+            String message = "cannot update with object $object"
+            throw new DataStorageFailureException(message, new IllegalArgumentException(message))
+        }
     }
 
     private Map viewWithJsonKeys(String designDoc, String viewName, Map<String, Map<String, Object>> keys) {
@@ -230,10 +267,9 @@ class GroovyCouchDb {
 
             log.debug "<< PUT path: ${path} response: ${response.data}"
             return response.data
-        } catch (HttpResponseException e) {
+        } catch (Exception e) {
 
-            log.error "path: $path response: ${e.response.data}", e
-            throw e
+            throw logAndConvertException(e, path, true)
         }
     }
 
@@ -248,10 +284,9 @@ class GroovyCouchDb {
 
             log.debug "<< PUT path: ${path} body: ${body} response: ${response.data}"
             return response.data
-        } catch (HttpResponseException e) {
+        } catch (Exception e) {
 
-            log.error "path: $path body: $body response: ${e.response.data}", e
-            throw e
+            throw logAndConvertException(e, path, null, body, true)
         }
     }
 
@@ -266,10 +301,9 @@ class GroovyCouchDb {
 
             log.debug "<< POST path: ${path} body: ${body} response: ${response.data}"
             return response.data
-        } catch (HttpResponseException e) {
+        } catch (Exception e) {
 
-            log.error "path: $path body: $body response: ${e.response.data}", e
-            throw e
+            throw logAndConvertException(e, path, null, body, true)
         }
     }
 
@@ -277,7 +311,7 @@ class GroovyCouchDb {
         getIntern(path, true)
     }
 
-    private Object getIntern(String path, boolean errorLog) {
+    private Object getIntern(String path, boolean logError) {
         try {
 
             log.debug ">> GET path: ${path}"
@@ -287,12 +321,9 @@ class GroovyCouchDb {
 
             log.debug "<< GET path: ${path} response: ${response.data}"
             return response.data
-        } catch (HttpResponseException e) {
+        } catch (Exception e) {
 
-            if (errorLog) {
-                log.error "path: $path response: ${e.response.data}", e
-            }
-            throw e
+            throw logAndConvertException(e, path, logError)
         }
     }
 
@@ -306,10 +337,9 @@ class GroovyCouchDb {
 
             log.debug "<< GET path: ${path} query: ${query} response: ${response.data}"
             return response.data
-        } catch (HttpResponseException e) {
+        } catch (Exception e) {
 
-            log.error "path: $path response: ${e.response.data}", e
-            throw e
+            throw logAndConvertException(e, path, true)
         }
     }
 
@@ -324,10 +354,9 @@ class GroovyCouchDb {
 
             log.debug "<< DELETE path: ${path} response: ${response.data}"
             return response.data
-        } catch (HttpResponseException e) {
+        } catch (Exception e) {
 
-            log.error "path: $path response: ${e.response.data}", e
-            throw e
+            throw logAndConvertException(e, path, true)
         }
     }
 
@@ -342,11 +371,63 @@ class GroovyCouchDb {
 
             log.debug "<< DELETE path: ${path} query: ${query} response: ${response.data}"
             return response.data
-        } catch (HttpResponseException e) {
+        } catch (Exception e) {
 
-            log.error "path: $path response: ${e.response.data}", e
-            throw e
+            throw logAndConvertException(e, path, query, true)
         }
+    }
+
+    private Exception logAndConvertException(Exception e, String path, boolean logError) {
+        return logAndConvertException(e, path, null, null, logError)
+    }
+
+    private Exception logAndConvertException(Exception e, String path, def query, boolean logError) {
+        return logAndConvertException(e, path, query, null, logError)
+    }
+
+    private Exception logAndConvertException(Exception e, String path, def query, def body, boolean logError) {
+
+        String message = 'CouchDb access faild.'
+        if (path) {
+            " path: $path"
+        }
+        if (query) {
+            message += " query: $query"
+        }
+
+        Exception convertedException
+
+        if (e instanceof UnknownHostException || e instanceof HttpHostConnectException) {
+
+            message += " host: ${host}"
+            convertedException = new DataAccessResourceFailureException(message, e)
+        } else if (e instanceof HttpResponseException) {
+
+            message += " response: ${e.response.data} status code: ${e.statusCode}"
+
+            switch (e.statusCode) {
+                case 404:
+                    // check exception: db not exists error
+                    if (e.response?.data?.error == 'not_found' && e.response?.data?.reason == 'no_db_file') {
+                        convertedException = new DbNotFoundException(message, e)
+                    } else {
+                        convertedException = new DataRetrievalFailureException(message, e)
+                    }
+                    break;
+                default:
+                    convertedException = new DataAccessException(message, e)
+                    break;
+            }
+        } else {
+
+            convertedException = new DataAccessException(message, e)
+        }
+
+        if (logError) {
+            log.error message, convertedException
+        }
+
+        return convertedException
     }
 
     private RESTClient getCouchDbClient() {

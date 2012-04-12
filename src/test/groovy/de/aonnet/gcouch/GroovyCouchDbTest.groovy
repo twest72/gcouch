@@ -28,6 +28,7 @@
 
 package de.aonnet.gcouch
 
+import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
 
@@ -42,6 +43,53 @@ class GroovyCouchDbTest {
     private final static String DESIGN_DOC_ALL = 'all'
 
     @Test
+    void testConnectionFailWrongHost() {
+
+        GroovyCouchDb couchDb = new GroovyCouchDb(host: 'wronghost', dbName: TEST_DB)
+
+        try {
+            couchDb.couchDbVersion()
+            Assert.fail 'DataAccessResourceFailureException wurde nicht ausgelöst'
+        } catch (DataAccessResourceFailureException e) {
+            assert e
+        }
+    }
+
+    @Test
+    void testConnectionFailWrongPort() {
+
+        GroovyCouchDb couchDb = new GroovyCouchDb(host: HOST, port: 9999, dbName: TEST_DB)
+
+        try {
+            couchDb.couchDbVersion()
+            Assert.fail 'DataAccessResourceFailureException wurde nicht ausgelöst'
+        } catch (DataAccessResourceFailureException e) {
+            assert e
+        }
+    }
+
+    @Test
+    void testConnectionFailWrongDb() {
+
+        GroovyCouchDb couchDb = new GroovyCouchDb(host: 'wronghost', dbName: TEST_DB)
+
+        try {
+            couchDb.couchDbVersion()
+            Assert.fail 'DataAccessResourceFailureException wurde nicht ausgelöst'
+        } catch (DataAccessResourceFailureException e) {
+            assert e
+        }
+    }
+
+    @Test
+    void testExistsDb() {
+
+        GroovyCouchDb couchDb = new GroovyCouchDb(host: HOST, dbName: 'wrongdb')
+
+        assert !couchDb.existsDb()
+    }
+
+    @Test
     void testCreateAndDestroyDb() {
 
         GroovyCouchDb couchDb = new GroovyCouchDb(host: HOST, dbName: TEST_DB)
@@ -51,11 +99,19 @@ class GroovyCouchDbTest {
     }
 
     @Test
+    void testCleanDb() {
+
+        GroovyCouchDb couchDb = new GroovyCouchDb(host: HOST, dbName: TEST_DB)
+
+        couchDb.cleanDb()
+    }
+
+    @Test
     void testPutDataIntoCouchDb() {
         GroovyCouchDb couchDb = new GroovyCouchDb(host: HOST, dbName: TEST_DB)
         couchDb.cleanDb()
 
-        couchDb.create([
+        Map result = couchDb.create([
                 titel: "Groovy und jcouchdb",
                 text: "Maps mit Groovy und jcouchdb in die CouchDb speichern...",
                 kommentare: [
@@ -63,6 +119,163 @@ class GroovyCouchDbTest {
                         kommentar2: [email: "thomas.westphal@adesso.de", text: "Reaktion 2"]
                 ]
         ])
+
+        assert result
+        assert result.id
+        assert result.rev
+
+        println couchDb.read(result.id)
+    }
+
+    @Test
+    void testCreateDataWithNull() {
+        GroovyCouchDb couchDb = new GroovyCouchDb(host: HOST, dbName: TEST_DB)
+        couchDb.cleanDb()
+
+        try {
+            couchDb.create()
+            Assert.fail 'DataStorageFailureException wurde nicht ausgelöst'
+        } catch (DataStorageFailureException e) {
+            assert e
+        }
+
+        try {
+            couchDb.create(null)
+            Assert.fail 'DataStorageFailureException wurde nicht ausgelöst'
+        } catch (DataStorageFailureException e) {
+            assert e
+        }
+
+        try {
+            couchDb.create('  ')
+            Assert.fail 'DataStorageFailureException wurde nicht ausgelöst'
+        } catch (DataStorageFailureException e) {
+            assert e
+        }
+
+        try {
+            couchDb.create([:])
+            Assert.fail 'DataStorageFailureException wurde nicht ausgelöst'
+        } catch (DataStorageFailureException e) {
+            assert e
+        }
+    }
+
+    @Test
+    void testReadDataWithNull() {
+        GroovyCouchDb couchDb = new GroovyCouchDb(host: HOST, dbName: TEST_DB)
+        couchDb.cleanDb()
+
+        try {
+            couchDb.read()
+            Assert.fail 'DataRetrievalFailureException wurde nicht ausgelöst'
+        } catch (DataRetrievalFailureException e) {
+            assert e
+        }
+
+        try {
+            couchDb.read('   ')
+            Assert.fail 'DataRetrievalFailureException wurde nicht ausgelöst'
+        } catch (DataRetrievalFailureException e) {
+            assert e
+        }
+
+        try {
+            couchDb.read(null)
+            Assert.fail 'DataRetrievalFailureException wurde nicht ausgelöst'
+        } catch (DataRetrievalFailureException e) {
+            assert e
+        }
+    }
+
+    @Test
+    void testUpdateDataWithEmptyVersion() {
+        GroovyCouchDb couchDb = new GroovyCouchDb(host: HOST, dbName: TEST_DB)
+        couchDb.cleanDb()
+
+        try {
+            couchDb.update(null, '1')
+            Assert.fail 'DataStorageFailureException wurde nicht ausgelöst'
+        } catch (DataStorageFailureException e) {
+            assert e
+        }
+
+        try {
+            couchDb.update('', '1')
+            Assert.fail 'DataStorageFailureException wurde nicht ausgelöst'
+        } catch (DataStorageFailureException e) {
+            assert e
+        }
+
+        try {
+            couchDb.update(' ', '1')
+            Assert.fail 'DataStorageFailureException wurde nicht ausgelöst'
+        } catch (DataStorageFailureException e) {
+            assert e
+        }
+    }
+
+    @Test
+    void testUpdateDataWithEmptyObject() {
+        GroovyCouchDb couchDb = new GroovyCouchDb(host: HOST, dbName: TEST_DB)
+        couchDb.cleanDb()
+
+        try {
+            couchDb.update('1', null)
+            Assert.fail 'DataStorageFailureException wurde nicht ausgelöst'
+        } catch (DataStorageFailureException e) {
+            assert e
+        }
+
+        try {
+            couchDb.update('1', '')
+            Assert.fail 'DataStorageFailureException wurde nicht ausgelöst'
+        } catch (DataStorageFailureException e) {
+            assert e
+        }
+
+        try {
+            couchDb.update('1', '  ')
+            Assert.fail 'DataStorageFailureException wurde nicht ausgelöst'
+        } catch (DataStorageFailureException e) {
+            assert e
+        }
+
+        try {
+            couchDb.update('1', [:])
+            Assert.fail 'DataStorageFailureException wurde nicht ausgelöst'
+        } catch (DataStorageFailureException e) {
+            assert e
+        }
+    }
+
+    @Test
+    void testReadDataCouchDb() {
+        GroovyCouchDb couchDb = new GroovyCouchDb(host: HOST, dbName: TEST_DB)
+        couchDb.cleanDb()
+
+        Map data = [
+                titel: "Groovy und jcouchdb",
+                text: "Maps mit Groovy und jcouchdb in die CouchDb speichern...",
+                kommentare: [
+                        kommentar1: [email: "thomas.westphal@adesso.de", text: "Reaktion 1"],
+                        kommentar2: [email: "thomas.westphal@adesso.de", text: "Reaktion 2"]
+                ]
+        ]
+        Map result = couchDb.create(data)
+
+        assert result
+        assert result.id
+        assert result.rev
+
+        Map readData = couchDb.read(result.id)
+
+        assert readData
+        assert result.id == readData._id
+        assert result.rev == readData._rev
+        assert data.titel == readData.titel
+        assert data.text == readData.text
+        assert data.kommentare == readData.kommentare
     }
 
     @Test
@@ -312,6 +525,32 @@ function(doc) {
         assert 0 == viewResult.offset
     }
 
+    @Test
+    void testCreateAndCallViewWithPagination() {
+        GroovyCouchDb couchDb = new GroovyCouchDb(host: HOST, dbName: TEST_DB)
+        couchDb.cleanDb()
+
+        createViews(couchDb)
+        createData(couchDb)
+
+        Map viewResult = couchDb.view(DESIGN_DOC_ALL, 'allOrt', [limit: 2, skip: 0])
+        printView viewResult
+        assert 6 == viewResult.total_rows
+        assert 0 == viewResult.offset
+        assert 2 == viewResult.rows.size()
+
+        viewResult = couchDb.view(DESIGN_DOC_ALL, 'allOrt', [limit: 2, skip: 2])
+        printView viewResult
+        assert 6 == viewResult.total_rows
+        assert 2 == viewResult.offset
+        assert 2 == viewResult.rows.size()
+
+        viewResult = couchDb.view(DESIGN_DOC_ALL, 'allOrt', [limit: 2, skip: 4])
+        printView viewResult
+        assert 6 == viewResult.total_rows
+        assert 4 == viewResult.offset
+        assert 2 == viewResult.rows.size()
+    }
 
     @Test
     void testCreateAndCallViewWithJsonKey() {
@@ -342,7 +581,6 @@ function(doc) {
             assert it.value.eintritt == "freier Eintritt, ohne Voranmeldung"
         }
     }
-
 
     @Test
     void testCreateAndCallViewWithJsonStartKey() {
