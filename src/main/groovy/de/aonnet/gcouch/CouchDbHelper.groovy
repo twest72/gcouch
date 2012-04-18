@@ -36,4 +36,16 @@ class CouchDbHelper {
         view.put(viewName, [map: viewMapFunction])
         return view
     }
+
+    static void setAttachmentAtObject(Map object, String name, String contentType, String base64Data) {
+
+        Map<String, Map<String, String>> attachments = object.get('_attachments')
+        if (!attachments) {
+            attachments = [:]
+        }
+
+        attachments.put(name, ['content_type': contentType, 'data': base64Data])
+
+        object.put('_attachments', attachments)
+    }
 }

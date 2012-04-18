@@ -274,9 +274,13 @@ class GroovyCouchDb {
     }
 
     private Object putIntern(String path, def body) {
+        return putIntern(path, body, JSON)
+    }
+
+    private Object putIntern(String path, def body, def contentType) {
         try {
 
-            log.debug ">> PUT path: ${path} body: ${body}"
+            log.debug ">> PUT path: ${path} body: ${body} contentType: ${contentType}"
 
             def response = getCouchDbClient().put(path: path, contentType: JSON, requestContentType: JSON, body: body)
             assert response.status == 201

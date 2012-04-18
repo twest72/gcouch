@@ -28,6 +28,7 @@
 
 package de.aonnet.gcouch
 
+import groovyx.net.http.ContentType
 import org.junit.Test
 
 class CouchDbHelperTest {
@@ -49,5 +50,45 @@ class CouchDbHelperTest {
         assert view.testView
         assert view.testView.map
         assert view.testView.map == allVeranstaltungArrayKey
+    }
+
+    @Test
+    void testAddAttachmentFirst() {
+
+        Map object = [:]
+        CouchDbHelper.setAttachmentAtObject(object, 'test.txt', ContentType.BINARY.toString(), 'test'.bytes.encodeBase64().toString())
+        assert object.toMapString() == '[_attachments:[test.txt:[content_type:application/octet-stream, data:dGVzdA==]]]'
+
+    }
+
+    @Test
+    void testAddAttachmentSecond() {
+
+        Map object = [:]
+        CouchDbHelper.setAttachmentAtObject(object, 'test1.txt', ContentType.BINARY.toString(), 'test'.bytes.encodeBase64().toString())
+        assert object.toMapString() == '[_attachments:[test1.txt:[content_type:application/octet-stream, data:dGVzdA==]]]'
+
+        CouchDbHelper.setAttachmentAtObject(object, 'test2.txt', ContentType.BINARY.toString(), 'test'.bytes.encodeBase64().toString())
+
+        println object
+        assert object.toMapString() == '[_attachments:[test1.txt:[content_type:application/octet-stream, data:dGVzdA==], test2.txt:[content_type:application/octet-stream, data:dGVzdA==]]]'
+    }
+
+    @Test
+    void testAddAttachmentUpdate() {
+
+        Map object = [:]
+        CouchDbHelper.setAttachmentAtObject(object, 'test1.txt', ContentType.BINARY.toString(), 'test'.bytes.encodeBase64().toString())
+        assert object.toMapString() == '[_attachments:[test1.txt:[content_type:application/octet-stream, data:dGVzdA==]]]'
+
+        CouchDbHelper.setAttachmentAtObject(object, 'test2.txt', ContentType.BINARY.toString(), 'test'.bytes.encodeBase64().toString())
+
+        println object
+        assert object.toMapString() == '[_attachments:[test1.txt:[content_type:application/octet-stream, data:dGVzdA==], test2.txt:[content_type:application/octet-stream, data:dGVzdA==]]]'
+
+        CouchDbHelper.setAttachmentAtObject(object, 'test2.txt', ContentType.BINARY.toString(), 'testupdate'.bytes.encodeBase64().toString())
+
+        println object
+        assert object.toMapString() == '[_attachments:[test1.txt:[content_type:application/octet-stream, data:dGVzdA==], test2.txt:[content_type:application/octet-stream, data:dGVzdHVwZGF0ZQ==]]]'
     }
 }

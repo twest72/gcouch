@@ -28,6 +28,7 @@
 
 package de.aonnet.gcouch
 
+import groovyx.net.http.ContentType
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
@@ -119,6 +120,31 @@ class GroovyCouchDbTest {
                         kommentar2: [email: "thomas.westphal@adesso.de", text: "Reaktion 2"]
                 ]
         ])
+
+        assert result
+        assert result.id
+        assert result.rev
+
+        println couchDb.read(result.id)
+    }
+
+    @Test
+    void testCreateDataIntoCouchDbWithAttachment() {
+        GroovyCouchDb couchDb = new GroovyCouchDb(host: HOST, dbName: TEST_DB)
+        couchDb.cleanDb()
+
+        Map object = [
+                titel: "Groovy und jcouchdb",
+                text: "Maps mit Groovy und jcouchdb in die CouchDb speichern...",
+                kommentare: [
+                        kommentar1: [email: "thomas.westphal@adesso.de", text: "Reaktion 1"],
+                        kommentar2: [email: "thomas.westphal@adesso.de", text: "Reaktion 2"]
+                ]
+        ]
+
+        CouchDbHelper.setAttachmentAtObject(object, 'test.txt', ContentType.BINARY.toString(), 'test'.bytes.encodeBase64().toString())
+        println object
+        Map result = couchDb.create(object)
 
         assert result
         assert result.id
