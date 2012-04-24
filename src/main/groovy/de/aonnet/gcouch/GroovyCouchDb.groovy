@@ -115,7 +115,8 @@ class GroovyCouchDb {
 
         log.debug "call lucene search $searchName with options: $searchOptions"
 
-        Map data = getIntern("_fti/local/${dbName}/_design/lucene/${searchName}", searchOptions)
+        String path = couchDbVersion() < '1.1' ? "${dbName}/_fti" : "_fti/local/${dbName}"
+        Map data = getIntern("${path}/_design/lucene/${searchName}", searchOptions)
         return data
     }
 
