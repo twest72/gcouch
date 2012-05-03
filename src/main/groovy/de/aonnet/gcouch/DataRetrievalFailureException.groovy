@@ -32,6 +32,10 @@ package de.aonnet.gcouch
 
 import groovy.transform.InheritConstructors
 
-@InheritConstructors
+// TODO use when GROOVY-5221 fixed: @InheritConstructors
 class DataRetrievalFailureException extends DataAccessException {
+
+    DataRetrievalFailureException(String message, Throwable cause) {
+        super(message, cause)
+    }
 }

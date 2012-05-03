@@ -28,14 +28,12 @@
 
 
 
+
+
 package de.aonnet.gcouch
 
 import groovy.transform.InheritConstructors
 
-// TODO use when GROOVY-5221 fixed: @InheritConstructors
-class DataAccessException extends RuntimeException {
-
-    DataAccessException(String message, Throwable cause) {
-        super(message, cause)
-    }
+@InheritConstructors
+class DataNotFoundException extends DataRetrievalFailureException {
 }

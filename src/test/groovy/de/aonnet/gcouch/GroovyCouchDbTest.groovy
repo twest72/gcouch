@@ -110,7 +110,7 @@ class GroovyCouchDbTest {
     }
 
     @Test
-    void testPutDataIntoCouchDb() {
+    void testCreateDataIntoCouchDb() {
         GroovyCouchDb couchDb = new GroovyCouchDb(host: HOST, dbName: TEST_DB)
         couchDb.cleanDb()
 
@@ -214,6 +214,82 @@ class GroovyCouchDbTest {
         } catch (DataRetrievalFailureException e) {
             assert e
         }
+    }
+
+    @Test
+    void testExistsDataReturnsFalse() {
+        GroovyCouchDb couchDb = new GroovyCouchDb(host: HOST, dbName: TEST_DB)
+        couchDb.cleanDb()
+
+        assert !couchDb.exists('bla')
+    }
+
+    @Test
+    void testExistsDataReturnsTrue() {
+        GroovyCouchDb couchDb = new GroovyCouchDb(host: HOST, dbName: TEST_DB)
+        couchDb.cleanDb()
+
+        Map result = couchDb.create([
+                titel: "Groovy und jcouchdb",
+                text: "Maps mit Groovy und jcouchdb in die CouchDb speichern...",
+                kommentare: [
+                        kommentar1: [email: "thomas.westphal@adesso.de", text: "Reaktion 1"],
+                        kommentar2: [email: "thomas.westphal@adesso.de", text: "Reaktion 2"]
+                ]
+        ])
+
+        assert result
+        assert result.id
+        assert result.rev
+
+        assert couchDb.exists(result.id)
+    }
+
+    @Test
+    void testDeleteDataFromCouchDb() {
+        GroovyCouchDb couchDb = new GroovyCouchDb(host: HOST, dbName: TEST_DB)
+        couchDb.cleanDb()
+
+        Map result = couchDb.create([
+                titel: "Groovy und jcouchdb",
+                text: "Maps mit Groovy und jcouchdb in die CouchDb speichern...",
+                kommentare: [
+                        kommentar1: [email: "thomas.westphal@adesso.de", text: "Reaktion 1"],
+                        kommentar2: [email: "thomas.westphal@adesso.de", text: "Reaktion 2"]
+                ]
+        ])
+
+        assert result
+        assert result.id
+        assert result.rev
+
+        couchDb.delete(result.id, result.rev)
+    }
+
+    @Test
+    void testDeleteDataFromCouchDbWithoutRev() {
+        GroovyCouchDb couchDb = new GroovyCouchDb(host: HOST, dbName: TEST_DB)
+        couchDb.cleanDb()
+
+        Map result = couchDb.create([
+                titel: "Groovy und jcouchdb",
+                text: "Maps mit Groovy und jcouchdb in die CouchDb speichern...",
+                kommentare: [
+                        kommentar1: [email: "thomas.westphal@adesso.de", text: "Reaktion 1"],
+                        kommentar2: [email: "thomas.westphal@adesso.de", text: "Reaktion 2"]
+                ]
+        ])
+
+        assert result
+        assert result.id
+        assert result.rev
+
+        Map result2 = couchDb.delete(result.id)
+        assert result2
+        assert result2._id
+        assert result2._rev
+        assert result.id == result2._id
+        assert result.rev == result2._rev
     }
 
     @Test
@@ -332,6 +408,50 @@ function(doc) {
                 testView2: [map: viewFunctionWithoutJoin]
         ]
         couchDb.putViewsIntoCouchDb viewId, views
+    }
+
+    @Test
+    void testPutViewsIntoCouchDbFails() {
+        GroovyCouchDb couchDb = new GroovyCouchDb(host: HOST, dbName: TEST_DB)
+        couchDb.cleanDb()
+
+        def viewId = 'testJoin'
+        def viewFunctionWithoutJoin = """
+// Testview
+function(doc) {
+    emit(doc._id, doc);
+}"""
+        def views = [
+                viewOhneJoin: [map: viewFunctionWithoutJoin],
+                testView2: [map: viewFunctionWithoutJoin]
+        ]
+        couchDb.putViewsIntoCouchDb viewId, views
+
+        try {
+            couchDb.putViewsIntoCouchDb viewId, views
+            Assert.fail 'DataAccessException wurde nicht ausgelöst'
+        } catch (DataAccessException e) {
+            assert e
+        }
+    }
+
+    @Test
+    void testUpdateViewsIntoCouchDb() {
+        GroovyCouchDb couchDb = new GroovyCouchDb(host: HOST, dbName: TEST_DB)
+        couchDb.cleanDb()
+
+        def viewId = 'testJoin'
+        def viewFunctionWithoutJoin = """
+// Testview
+function(doc) {
+    emit(doc._id, doc);
+}"""
+        def views = [
+                viewOhneJoin: [map: viewFunctionWithoutJoin],
+                testView2: [map: viewFunctionWithoutJoin]
+        ]
+        couchDb.putViewsIntoCouchDb viewId, views
+        couchDb.updateViewsIntoCouchDb viewId, views
     }
 
     @Test

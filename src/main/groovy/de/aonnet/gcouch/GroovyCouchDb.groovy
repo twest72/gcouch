@@ -56,14 +56,27 @@ class GroovyCouchDb {
         return [id: data.id, rev: data.rev]
     }
 
+    def exists(String id) {
+        try {
+            def result = readIntern id, false
+            return result._id == id
+        } catch (DataNotFoundException e) {
+            return false
+        }
+    }
+
     def read(String id) {
+        return readIntern(id, true)
+    }
+
+    private def readIntern(String id, boolean logError) {
 
         if (id == null || id.trim().isEmpty()) {
             String message = "cannot read with id $id"
             throw new DataRetrievalFailureException(message, new IllegalArgumentException(message))
         }
 
-        def data = getIntern("${dbName}/${id}")
+        def data = getIntern("${dbName}/${id}", logError)
         return data
     }
 
@@ -93,6 +106,25 @@ class GroovyCouchDb {
         }
 
         deleteIntern("${dbName}/${id}", [rev: version])
+    }
+
+    Map delete(String id) {
+
+        if (id == null || id.trim().isEmpty()) {
+            String message = "cannot delete with id $id"
+            throw new DataRetrievalFailureException(message, new IllegalArgumentException(message))
+        }
+
+        Map result = read(id)
+        String version = result._rev
+        if (version == null || version.trim().isEmpty()) {
+            String message = "cannot delete with version $version"
+            throw new DataRetrievalFailureException(message, new IllegalArgumentException(message))
+        }
+
+        delete(id, version)
+
+        return result
     }
 
     Map luceneSearchByQuery(String searchName, Map<String, String> query) {
@@ -209,13 +241,18 @@ class GroovyCouchDb {
         }
     }
 
+    void updateViewsIntoCouchDb(String viewId, Map<String, Map<String, String>> views) {
+        delete(fullViewId(viewId))
+        putViewsIntoCouchDb(viewId, views)
+    }
+
     void putViewsIntoCouchDb(String viewId, Map<String, Map<String, String>> views) {
 
         views.each { String viewName, Map<String, String> view ->
             log.debug ">> insert view '${viewName}' into couch: ${view}"
         }
 
-        String fullViewId = "_design/${viewId}"
+        String fullViewId = fullViewId(viewId)
         putIntern("${dbName}/${fullViewId}", [_id: fullViewId, language: 'javascript', views: views])
     }
 
@@ -226,6 +263,10 @@ class GroovyCouchDb {
         }
 
         putIntern("${dbName}/_design/lucene", [_id: '_design/lucene', language: 'javascript', fulltext: fulltextSearchFunctions])
+    }
+
+    private String fullViewId(String viewId) {
+        return "_design/${viewId}"
     }
 
     private void checkStorageObject(object) {
@@ -334,7 +375,7 @@ class GroovyCouchDb {
         }
     }
 
-    private Object getIntern(String path, def query) {
+    private Object getIntern(String path, Map query) {
         try {
 
             log.debug ">> GET path: ${path} query: ${query}"
@@ -417,6 +458,8 @@ class GroovyCouchDb {
                     // check exception: db not exists error
                     if (e.response?.data?.error == 'not_found' && e.response?.data?.reason == 'no_db_file') {
                         convertedException = new DbNotFoundException(message, e)
+                    } else if (e.response?.data?.error == 'not_found' && e.response?.data?.reason == 'missing') {
+                        convertedException = new DataNotFoundException(message, e)
                     } else {
                         convertedException = new DataRetrievalFailureException(message, e)
                     }
