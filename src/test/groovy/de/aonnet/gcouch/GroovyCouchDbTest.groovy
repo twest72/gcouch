@@ -293,6 +293,15 @@ class GroovyCouchDbTest {
     }
 
     @Test
+    void testDeleteNotExistingDataFromCouchDb() {
+        GroovyCouchDb couchDb = new GroovyCouchDb(host: HOST, dbName: TEST_DB)
+        couchDb.cleanDb()
+
+        Map result = couchDb.delete("hello")
+        assert result == null
+    }
+
+    @Test
     void testUpdateDataWithEmptyVersion() {
         GroovyCouchDb couchDb = new GroovyCouchDb(host: HOST, dbName: TEST_DB)
         couchDb.cleanDb()
@@ -436,7 +445,7 @@ function(doc) {
     }
 
     @Test
-    void testUpdateViewsIntoCouchDb() {
+    void testUpdateViews() {
         GroovyCouchDb couchDb = new GroovyCouchDb(host: HOST, dbName: TEST_DB)
         couchDb.cleanDb()
 
@@ -451,6 +460,24 @@ function(doc) {
                 testView2: [map: viewFunctionWithoutJoin]
         ]
         couchDb.putViewsIntoCouchDb viewId, views
+        couchDb.updateViewsIntoCouchDb viewId, views
+    }
+
+    @Test
+    void testUpdateNonExistingViews() {
+        GroovyCouchDb couchDb = new GroovyCouchDb(host: HOST, dbName: TEST_DB)
+        couchDb.cleanDb()
+
+        def viewId = 'testJoin'
+        def viewFunctionWithoutJoin = """
+// Testview
+function(doc) {
+    emit(doc._id, doc);
+}"""
+        def views = [
+                viewOhneJoin: [map: viewFunctionWithoutJoin],
+                testView2: [map: viewFunctionWithoutJoin]
+        ]
         couchDb.updateViewsIntoCouchDb viewId, views
     }
 

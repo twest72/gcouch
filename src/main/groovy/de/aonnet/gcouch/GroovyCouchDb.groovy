@@ -115,16 +115,20 @@ class GroovyCouchDb {
             throw new DataRetrievalFailureException(message, new IllegalArgumentException(message))
         }
 
-        Map result = read(id)
-        String version = result._rev
-        if (version == null || version.trim().isEmpty()) {
-            String message = "cannot delete with version $version"
-            throw new DataRetrievalFailureException(message, new IllegalArgumentException(message))
+        try {
+            Map result = readIntern(id, false)
+            String version = result._rev
+            if (version == null || version.trim().isEmpty()) {
+                String message = "cannot delete with version $version"
+                throw new DataRetrievalFailureException(message, new IllegalArgumentException(message))
+            }
+
+            delete(id, version)
+
+            return result
+        } catch (DataNotFoundException e) {
+            return null
         }
-
-        delete(id, version)
-
-        return result
     }
 
     Map luceneSearchByQuery(String searchName, Map<String, String> query) {
